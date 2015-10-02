@@ -56,7 +56,7 @@ def ymax(val1, val2, val3, val4):
             if val3 >= val4:
                 return val3, 2
             else:
-                return val4: 3
+                return val4, 3
 
 
 def map_reward(map, state, discount, winstate):
@@ -95,9 +95,9 @@ def MDP(map, cur_state, step, goal, discount, trail, score, winfail, iterkill):
     u_down = 0.8 * map_reward(map, cur_state.tweak(1, 0), discount, winfail)[0] + 0.1 * map_reward(map, cur_state.tweak(0, -1), discount, winfail)[0] + 0.1 * map_reward(map, cur_state.tweak(0, 1), discount, winfail)[0]
     u_right = 0.8 * map_reward(map, cur_state.tweak(0, 1), discount, winfail)[0] + 0.1 * map_reward(map, cur_state.tweak(1, 0), discount, winfail)[0] + 0.1 * map_reward(map, cur_state.tweak(-1, 0), discount, winfail)[0]
     u_up = 0.8 * map_reward(map, cur_state.tweak(-1, 0), discount, winfail)[0] + 0.1 * map_reward(map, cur_state.tweak(0, 1), discount, winfail)[0] + 0.1 * map_reward(map, cur_state.tweak(0, -1), discount, winfail)[0]
-    u_left = 0.8 * map_reward(map, cur_state.tweak(0, -1), discount, winfail)[0] + 0.1 * map_rewa    rd(map, cur_state.tweak(1, 0), discount, winfail)[0] + 0.1 * map_reward(map, cur_state.tweak(-1, 0), discount, winfail)[0]
+    u_left = 0.8 * map_reward(map, cur_state.tweak(0, -1), discount, winfail)[0] + 0.1 * map_reward(map, cur_state.tweak(1, 0), discount, winfail)[0] + 0.1 * map_reward(map, cur_state.tweak(-1, 0), discount, winfail)[0]
                                                         # find the best direction
-    ymax(u_down, u_right, u_up, u_left) = y_max_value, direction
+    y_max_value, direction = ymax(u_down, u_right, u_up, u_left)
     max_utility = reward + y_max_value                  # find the state utility
 
     pointer = None
@@ -146,33 +146,6 @@ def MDP(map, cur_state, step, goal, discount, trail, score, winfail, iterkill):
     if (0 <= pointer.y < 8) and (0 <= pointer.x < 10):
         tosearch.append(pointer)
 
-    scrutiny = None
-
-    while len(tosearch) > 0:                           # evaluate all the tosearch nodes
-        pointer = tosearch.pop()
-        if map[pointer.y][pointer.x] is not "2":
-            if trail.count(pointer) == 0:
-                if algcode is "1":
-                    tempscore = g_score(map, center, pointer) + manhattan(pointer, goal)
-                elif algcode is "2":
-                    tempscore = g_score(map, center, pointer) + diagonal(pointer, goal)
-                elif algcode is "3":
-                    tempscore = g_score(map, center, pointer) + wild_ride()
-                if currentf == 0 or tempscore < currentf:
-                    currentf = tempscore
-                    scrutiny = pointer
-        searched.append(pointer)
-        checks += 1
-
-    if scrutiny is None:                                # advanced pathfinding if stuck
-        trail.pop()
-        score.pop()
-        location = trail[-1]
-    else:
-        location = scrutiny
-        trail.append(scrutiny)                          # move best option into solution
-        score.append(currentf)
-
     iterkill += 1
     if location.is_same(goal):                          # if goal is reached, return
         return trail, score, winfail
@@ -197,6 +170,18 @@ def main(argv):                                         # -------MAIN-----------
             world_in_list = world_in_list.split(" ")
             world.append(world_in_list)
     world.pop()
+    for y in range(0, 7):
+        for x in range(0, 9):
+            if world[y][x] == 1:
+                world[y][x] = -1
+            if world[y][x] == 2:
+                world[y][x] = None
+            if world[y][x] == 3:
+                world[y][x] = -2
+            if world[y][x] == 4:
+                world[y][x] = 1
+            if world[y][x] == 50:
+                world[y][x] = 50
 
     hol = Node(7, 0)                                   # worldbuilding and execution
     goal = Node(0, 9)
@@ -207,6 +192,7 @@ def main(argv):                                         # -------MAIN-----------
     sucess = 0
     leash = 0
 
+    '''
     result = MDP(world, hol, steps, goal, e, path, totalscore, sucess, leash)
 
     sum = 0
@@ -217,7 +203,7 @@ def main(argv):                                         # -------MAIN-----------
         yy.print_node()
     print "Total F-Score is: %s" % sum
     print "Total number of unique node checks: %s" % result[2]
-
+    '''
 
 if __name__ == "__main__":
     main(sys.argv)
