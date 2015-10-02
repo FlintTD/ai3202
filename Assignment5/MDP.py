@@ -34,26 +34,71 @@ def g_score(map, origin, destination):                  # calculates G score
     return score
 
 
+def ymax(val1, val2, val3, val4):
+    if val1 >= val2:
+        if val1 >= val3:
+            if val1 >= val4:
+                return val1, 0
+            else:
+                return val4, 3
+        else:
+            if val3 >= val4:
+                return val3, 2
+            else:
+                return val4, 3
+    else:
+        if val2 >= val3:
+            if val2 >= val4:
+                return val2, 1
+            else:
+                return val4, 3
+        else:
+            if val3 >= val4:
+                return val3, 2
+            else:
+                return val4: 3
+
+
+def map_reward(map, state, discount, winstate):
+    reward = 0
+    if (0 <= state.y < 8) and (0 <= state.x < 10):
+        if map[state.y][state.x] == 1:          # create a reward for the current state
+            reward -= 1
+            return reward, 0
+        elif map[state.y][state.x] == 2:
+            return 0, 1
+        elif map[state.y][state.x] == 3:
+            reward -= 2
+            return reward, 0
+        elif map[state.y][state.x] == 4:
+            reward += 1
+            reward = reward * (discount ^ step)
+            return reward, 0
+        elif (state.y == 0) and (state.x == 9):
+            reward += 50
+            reward = reward * (discount ^ step)
+            return reward, 2
+    else:
+        return 0, 1
+
+
 def MDP(map, cur_state, step, goal, discount, trail, score, winfail, iterkill):
     tosearch = []
     currentf = 0
     reward = 0
+                                                        # check reward and winstate
+    reward, winfail = map_reward(map, cur_state, discount, winfail)
 
-    if map[cur_state.y][cur_state.x] == 1:              # create a reward for the current state
-        reward -= 1
-    elif map[cur_state.y][cur_state.x] == 2:
-        return trail, score, 1
-    elif map[cur_state.y][cur_state.x] == 3:
-        reward -= 2
-    elif map[cur_state.y][cur_state.x] == 4:
-        reward += 1
-    elif (cur_state.y == goal.y) and (cur_state.x == goal.x):
-        reward += 50
-        winfail = 2
-    reward = reward * (0.9 ^ step)                      # modify reward based on discount
-
-    if winfail == 2:
+    if winfail == 2:                                    # exit if we hit the goal
         return trail, score, winfail
+                                                        # find the utility of each direction
+    u_down = 0.8 * map_reward(map, cur_state.tweak(1, 0), discount, winfail)[0] + 0.1 * map_reward(map, cur_state.tweak(0, -1), discount, winfail)[0] + 0.1 * map_reward(map, cur_state.tweak(0, 1), discount, winfail)[0]
+    u_right = 0.8 * map_reward(map, cur_state.tweak(0, 1), discount, winfail)[0] + 0.1 * map_reward(map, cur_state.tweak(1, 0), discount, winfail)[0] + 0.1 * map_reward(map, cur_state.tweak(-1, 0), discount, winfail)[0]
+    u_up = 0.8 * map_reward(map, cur_state.tweak(-1, 0), discount, winfail)[0] + 0.1 * map_reward(map, cur_state.tweak(0, 1), discount, winfail)[0] + 0.1 * map_reward(map, cur_state.tweak(0, -1), discount, winfail)[0]
+    u_left = 0.8 * map_reward(map, cur_state.tweak(0, -1), discount, winfail)[0] + 0.1 * map_rewa    rd(map, cur_state.tweak(1, 0), discount, winfail)[0] + 0.1 * map_reward(map, cur_state.tweak(-1, 0), discount, winfail)[0]
+                                                        # find the best direction
+    ymax(u_down, u_right, u_up, u_left) = y_max_value, direction
+    max_utility = reward + y_max_value                  # find the state utility
 
     pointer = None
     down_trail = trail
@@ -70,11 +115,13 @@ def MDP(map, cur_state, step, goal, discount, trail, score, winfail, iterkill):
         up = MDP(map, pointer, step + 1, goal, discount, up_trail.append(pointer), score, winfail, iterdead)
         pointer = cur_state.tweak(0, -1)
         left = MDP(map, pointer, step + 1, goal, discount, left_trail.append(pointer), score, winfail, iterdead)
-    else:
+    else:                                               # avoid going off-map
         return trail, score, 1
 
 
-    pointer = center.tweak(-1, 0)                      # add all valid nodes around the center
+
+
+    pointer = center.tweak(-1, 0)                       # add all valid nodes around the center
     if (0 <= pointer.y < 8) and (0 <= pointer.x < 10):
         tosearch.append(pointer)
     pointer = center.tweak(-1, 1)
