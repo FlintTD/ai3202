@@ -59,8 +59,8 @@ def ymax(val1, val2, val3, val4):
                 return val4, 3
 
 
-def map_reward(map, state, discount, winstate):
-    reward = 0
+def map_reward(map, state, step, winstate):
+    reward = map[state.y][state.x] + (0.9 ^ step) *
     if (0 <= state.y < 8) and (0 <= state.x < 10):
         if map[state.y][state.x] == 1:          # create a reward for the current state
             reward -= 1
@@ -82,15 +82,13 @@ def map_reward(map, state, discount, winstate):
         return 0, 1
 
 
-def MDP(map, cur_state, step, goal, discount, trail, score, winfail, iterkill):
-    tosearch = []
-    currentf = 0
-    reward = 0
+def MDP(map, new_map, cur_state, start, step, discount, trail, score, winfail, iterkill):
+    state_value = map[start.y][start.x]
+    if state_value is None:
+        return None
                                                         # check reward and winstate
     reward, winfail = map_reward(map, cur_state, discount, winfail)
 
-    if winfail == 2:                                    # exit if we hit the goal
-        return trail, score, winfail
                                                         # find the utility of each direction
     u_down = 0.8 * map_reward(map, cur_state.tweak(1, 0), discount, winfail)[0] + 0.1 * map_reward(map, cur_state.tweak(0, -1), discount, winfail)[0] + 0.1 * map_reward(map, cur_state.tweak(0, 1), discount, winfail)[0]
     u_right = 0.8 * map_reward(map, cur_state.tweak(0, 1), discount, winfail)[0] + 0.1 * map_reward(map, cur_state.tweak(1, 0), discount, winfail)[0] + 0.1 * map_reward(map, cur_state.tweak(-1, 0), discount, winfail)[0]
@@ -162,6 +160,7 @@ def main(argv):                                         # -------MAIN-----------
     w = sys.argv[1]
     e = sys.argv[2]
     world = []
+    new_world = []
     with open(w) as f:                                  # read in and clean up world data
         for line in f:
             world_in_list = line.strip("\n")
@@ -184,7 +183,7 @@ def main(argv):                                         # -------MAIN-----------
                 world[y][x] = 50
 
     hol = Node(7, 0)                                   # worldbuilding and execution
-    goal = Node(0, 9)
+    start = Node(0, 9)
     path = [hol]
     steps = 0
     start_state = hol
@@ -192,8 +191,7 @@ def main(argv):                                         # -------MAIN-----------
     sucess = 0
     leash = 0
 
-    '''
-    result = MDP(world, hol, steps, goal, e, path, totalscore, sucess, leash)
+    result = MDP(world, new_world, hol, start, steps, e, path, totalscore, sucess, leash)
 
     sum = 0
     for r in range(0, len(result[1])-1):
@@ -203,7 +201,7 @@ def main(argv):                                         # -------MAIN-----------
         yy.print_node()
     print "Total F-Score is: %s" % sum
     print "Total number of unique node checks: %s" % result[2]
-    '''
+
 
 if __name__ == "__main__":
     main(sys.argv)
@@ -213,6 +211,7 @@ if __name__ == "__main__":
 # http://stackoverflow.com/questions/10393176/is-there-a-way-to-read-a-txt-file-and-store-each-line-to-memory
 # May 1, 2012
 #
-# Cited Heuristic
-# http://www.policyalmanac.org/games/heuristics.htm
-# By Patrick Lester - April 21, 2004
+# Reference MDP
+# http://artint.info/html/ArtInt_227.html
+# Copyright David Poole and Alan Mackworth, 2010
+# Licenced under Creative Commons Attribution-Noncommercial-No Derivative Works 2.5 Canada License
