@@ -38,38 +38,36 @@ def ymax(val1, val2, val3, val4):
     if val1 >= val2:
         if val1 >= val3:
             if val1 >= val4:
-                return val1, 0
+                return val1, "up"
             else:
-                return val4, 3
+                return val4, "left"
         else:
             if val3 >= val4:
-                return val3, 2
+                return val3, "right"
             else:
-                return val4, 3
+                return val4, "left"
     else:
         if val2 >= val3:
             if val2 >= val4:
-                return val2, 1
+                return val2, "down"
             else:
-                return val4, 3
+                return val4, "left"
         else:
             if val3 >= val4:
-                return val3, 2
+                return val3, "right"
             else:
-                return val4, 3
+                return val4, "left"
 
 
-def map_reward(map, state, step, winstate):
-    reward = map[state.y][state.x] + (0.9 ^ step) *
-    if (0 <= state.y < 8) and (0 <= state.x < 10):
-        if map[state.y][state.x] == 1:          # create a reward for the current state
-            reward -= 1
-            return reward, 0
-        elif map[state.y][state.x] == 2:
-            return 0, 1
-        elif map[state.y][state.x] == 3:
-            reward -= 2
-            return reward, 0
+def map_reward(map, state, hue, winstate):
+    if hue is True:
+        if (0 <= state.y < 8) and (0 <= state.x < 10):
+            if map[state.y][state.x] == (, -1):         # create a reward for the current state
+                return -1
+            elif map[state.y][state.x] == (, -2):
+                return -2
+            elif map[state.y][state.x] == (, None):
+                return 0
         elif map[state.y][state.x] == 4:
             reward += 1
             reward = reward * (discount ^ step)
@@ -87,15 +85,23 @@ def MDP(map, new_map, cur_state, start, step, discount, trail, score, winfail, i
     if state_value is None:
         return None
                                                         # check reward and winstate
-    reward, winfail = map_reward(map, cur_state, discount, winfail)
+    # reward = map_reward(map, cur_state, rewutil, winfail)
+    reward = map[cur_state.y][cur_state.x][1]
 
+    if reward is None:
+        return 0
+
+    d_down = cur_state.tweak(1, 0)
+    d_right = cur_state.tweak(0, 1)
+    d_up = cur_state.tweak(-1, 0)
+    d_left = cur_state.tweak(0, -1)
                                                         # find the utility of each direction
-    u_down = 0.8 * map_reward(map, cur_state.tweak(1, 0), discount, winfail)[0] + 0.1 * map_reward(map, cur_state.tweak(0, -1), discount, winfail)[0] + 0.1 * map_reward(map, cur_state.tweak(0, 1), discount, winfail)[0]
-    u_right = 0.8 * map_reward(map, cur_state.tweak(0, 1), discount, winfail)[0] + 0.1 * map_reward(map, cur_state.tweak(1, 0), discount, winfail)[0] + 0.1 * map_reward(map, cur_state.tweak(-1, 0), discount, winfail)[0]
-    u_up = 0.8 * map_reward(map, cur_state.tweak(-1, 0), discount, winfail)[0] + 0.1 * map_reward(map, cur_state.tweak(0, 1), discount, winfail)[0] + 0.1 * map_reward(map, cur_state.tweak(0, -1), discount, winfail)[0]
-    u_left = 0.8 * map_reward(map, cur_state.tweak(0, -1), discount, winfail)[0] + 0.1 * map_reward(map, cur_state.tweak(1, 0), discount, winfail)[0] + 0.1 * map_reward(map, cur_state.tweak(-1, 0), discount, winfail)[0]
+    u_down = 0.8 * map[d_down.y][d_down.x][0] + 0.1 * map[d_left.y][d_left.x][0] + 0.1 * map[d_right.y][d_right.x][0]
+    u_right = 0.8 * map[d_right.y][d_right.x][0] + 0.1 * map[d_down.y][d_down.x][0] + 0.1 * map[d_up.y][d_up.x][0]
+    u_up = 0.8 * map[d_up.y][d_up.x][0] + 0.1 * map[d_right.y][d_right.x][0] + 0.1 * map[d_left.y][d_left.x][0]
+    u_left = 0.8 * map[d_left.y][d_left.x][0] + 0.1 * map[d_up.y][d_up.x][0] + 0.1 * map[d_down.y][d_down.x][0]
                                                         # find the best direction
-    y_max_value, direction = ymax(u_down, u_right, u_up, u_left)
+    y_max_value, direction = ymax(u_up, u_down, u_right, u_left)
     max_utility = reward + y_max_value                  # find the state utility
 
     pointer = None
@@ -172,15 +178,15 @@ def main(argv):                                         # -------MAIN-----------
     for y in range(0, 7):
         for x in range(0, 9):
             if world[y][x] == 1:
-                world[y][x] = -1
+                world[y][x] = (-1, -1, None)
             if world[y][x] == 2:
-                world[y][x] = None
+                world[y][x] = (0, None, None)
             if world[y][x] == 3:
-                world[y][x] = -2
+                world[y][x] = (-2, -2, None)
             if world[y][x] == 4:
-                world[y][x] = 1
+                world[y][x] = (1, 1, None)
             if world[y][x] == 50:
-                world[y][x] = 50
+                world[y][x] = (50, 50, None)
 
     hol = Node(7, 0)                                   # worldbuilding and execution
     start = Node(0, 9)
@@ -189,9 +195,10 @@ def main(argv):                                         # -------MAIN-----------
     start_state = hol
     totalscore = []
     sucess = 0
-    leash = 0
+    leash = 1
 
-    result = MDP(world, new_world, hol, start, steps, e, path, totalscore, sucess, leash)
+    while leash > 0.5:
+        result = MDP(world, new_world, hol, start, steps, e, path, totalscore, sucess, leash)
 
     sum = 0
     for r in range(0, len(result[1])-1):
