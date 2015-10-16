@@ -68,7 +68,7 @@ def ymax(val1, val2, val3, val4):
 
 def map_direction(map, state):
     if (0 <= state.y < 8) and (0 <= state.x < 10):
-        # return the reward
+        # return the direction
         reward = map[state.y][state.x][1]
         if reward is None:
             # wall condition
@@ -93,7 +93,7 @@ def map_reward(map, state):
 
 def map_utility(map, state):
     if (0 <= state.y < 8) and (0 <= state.x < 10):
-        # return the reward
+        # return the utility
         reward = map[state.y][state.x][1]
         if reward is None:
             return 0
@@ -114,7 +114,7 @@ def MDP(map, new_map, cur_state, start, step, discount):
         # check reward
     reward = map_reward(map, cur_state)
 
-        # avoid walls
+        # wall contingency
     if reward is None:
         return new_map, 0
 
@@ -133,10 +133,12 @@ def MDP(map, new_map, cur_state, start, step, discount):
     y_max_value, direction = ymax(u_up, u_down, u_right, u_left)
         # find the state utility
     max_utility = (reward + (y_max_value * discount))  # * entro(cur_state, start, discount)
-        # find the change
-    delta_utility = abs(map_utility(new_map, cur_state) - map_utility(map, cur_state))
         # read into new map
     new_map[cur_state.y][cur_state.x] = [max_utility, reward, direction]
+        # find the change
+    delta_utility = abs(map_utility(new_map, cur_state) - map_utility(map, cur_state))
+
+    print map_utility(map, cur_state)
 
     return new_map, delta_utility
 
@@ -214,7 +216,8 @@ def main(argv):                                         # -------MAIN-----------
         hol.print_node()   # prints the path
         if map_reward(new_world, hol) is None:
             # wall contingent
-            safety = False
+            path.pop()
+            hol = path[len(path) - 1]
         elif map_reward(new_world, hol) == 50:
             # win condition
             scorecard.append(map_utility(new_world, hol))
@@ -269,8 +272,7 @@ def main(argv):                                         # -------MAIN-----------
             path.append(hol)
             steps += 1
         elif map_direction(new_world, hol) == 0:
-                # stuck in wall or off map, reset to last valid location
-            print "Horse is dim"
+                # horse off map, reset to last valid location
             path.pop()
             hol = path[len(path) - 1]
 
