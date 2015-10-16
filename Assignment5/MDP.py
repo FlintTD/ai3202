@@ -34,6 +34,14 @@ def g_score(map, origin, destination):                  # calculates G score
     return score
 
 
+def print_map(land):
+    for y in range(0, 8):
+        for x in range(0, 10):
+            location = land[y][x]
+            print "[%s,%s,%s]" % (location[0], location[1], location[2]),
+        print "\n"
+
+
 def ymax(val1, val2, val3, val4):
     if val1 >= val2:
         if val1 >= val3:
@@ -58,15 +66,27 @@ def ymax(val1, val2, val3, val4):
             else:
                 return val4, "left"
 
+def map_direction(map, state):
+    if (0 <= state.y < 8) and (0 <= state.x < 10):
+        # return the reward
+        reward = map[state.y][state.x][1]
+        if reward is None:
+            # wall condition
+            return 0
+        else:
+            return map[state.y][state.x][2]
+    else:
+        return 0
+
 
 def map_reward(map, state):
     if (0 <= state.y < 8) and (0 <= state.x < 10):
         # return the reward
-        state = map[state.y][state.x][1]
-        if state is None:
+        reward = map[state.y][state.x][1]
+        if reward is None:
             return 0
         else:
-            return state
+            return reward
     else:
         return 0
 
@@ -74,8 +94,8 @@ def map_reward(map, state):
 def map_utility(map, state):
     if (0 <= state.y < 8) and (0 <= state.x < 10):
         # return the reward
-        state = map[state.y][state.x][1]
-        if state is None:
+        reward = map[state.y][state.x][1]
+        if reward is None:
             return 0
         else:
             return map[state.y][state.x][0]
@@ -111,11 +131,11 @@ def MDP(map, new_map, cur_state, start, step, discount):
         # find the state utility
     max_utility = reward + y_max_value
         # read into new map
-    new_map[cur_state.y][cur_state.x][0] = (max_utility, reward, direction)
+    new_map[cur_state.y][cur_state.x] = [max_utility, reward, direction]
         # find the change
-    delta_utility = abs(reward - max_utility)
+    delta_utility = abs(map_utility(new_map, cur_state) - map_utility(map, cur_state))
 
-    return delta_utility
+    return new_map, delta_utility
 
 
 def main(argv):                                         # -------MAIN----------------------------
@@ -130,48 +150,114 @@ def main(argv):                                         # -------MAIN-----------
             world_in_list = world_in_list.split(" ")
             world.append(world_in_list)
     world.pop()
-    for y in range(0, 7):
-        for x in range(0, 9):
-            if world[y][x] == 1:
+
+    '''
+    print world
+    '''
+
+    # world[y][x] = (utility, reward, direction)
+    for y in range(0, 8):
+        for x in range(0, 10):
+            if world[y][x] == '0':
+                # open space
+                world[y][x] = [0, 0, None]
+            if world[y][x] == '1':
                 # mountains
-                world[y][x] = (0, -1, None)
-            if world[y][x] == 2:
+                world[y][x] = [0, -1, None]
+            if world[y][x] == '2':
                 # walls
-                world[y][x] = (0, None, None)
-            if world[y][x] == 3:
+                world[y][x] = [0, None, None]
+            if world[y][x] == '3':
                 # snakes
-                world[y][x] = (0, -2, None)
-            if world[y][x] == 4:
+                world[y][x] = [0, -2, None]
+            if world[y][x] == '4':
                 # barns
-                world[y][x] = (0, 1, None)
-            if world[y][x] == 50:
+                world[y][x] = [0, 1, None]
+            if world[y][x] == '50':
                 # apples
-                world[y][x] = (0, 50, None)
+                world[y][x] = [0, 50, None]
 
     hol = Node(7, 0)                                   # worldbuilding and execution
     start = Node(0, 9)
     new_world = world
+    old_world = world
     entropy = 0.9
     path = [hol]
     steps = 0
     start_state = hol
-    totalscore = []
-    sucess = 0
+    scorecard = []
+    totalscore = 0
+    success = False
     leash = 1
+    safety = True
 
         # iterate maps until utility change falls below threshold
     while leash > e:
         net = 0
         for h in range(0, 8):
-            for g in range(9, 10, -1):
-                delta = MDP(world, new_world, Node(h, g), start, steps, entropy)
+            for g in range(0, 10):
+                new_world, delta = MDP(old_world, new_world, Node(h, g), start, steps, entropy)
+                print "hi-sign"
                 if delta > net:
                     net = delta
         leash = delta
+        old_world = new_world
 
         # Move the Horse through the map
+    leash = 40
+    w = 0
     while safety is True:
-        if map_reward(map, hol) == 50:
+        w += 1
+        if map_reward(new_world, hol) is None:
+            # wall contingent
+            safety = False
+        elif map_reward(new_world, hol) == 50:
+            # win condition
+            safety = False
+            success = True
+        elif map_direction(new_world, hol) is "left":
+            hol = hol.tweak(0, -1)
+            path.append(hol)
+            steps += 1
+        elif map_direction(new_world, hol) is "up":
+            hol = hol.tweak(-1, 0)
+            path.append(hol)
+            steps += 1
+        elif map_direction(new_world, hol) is "right":
+            hol = hol.tweak(0, 1)
+            path.append(hol)
+            steps += 1
+        elif map_direction(new_world, hol) is "down":
+            hol = hol.tweak(1, 0)
+            path.append(hol)
+            steps += 1
+        elif map_direction(new_world, hol) == 0:
+            print "Something dumb happened."
+            safety = False
+        if w == leash:
+            # prevent infinte loops
+            safety = False
+
+        # total the score
+    for q in range(0, len(scorecard)):
+        totalscore += scorecard[q]
+
+        # give a report printout
+    if success is False:
+        print "Path Failure, horse is lost, mismatch."
+        print "%s steps taken." % steps
+        print "Scorecard: %s" % scorecard
+        print "Total Score: %s" % totalscore
+        print "\n"
+        print_map(new_world)
+    else:
+        print "Path Success, horse has found apples!"
+        print "%s steps taken." % steps
+        print "Scorecard: %s" % scorecard
+        print "Total Score: %s" % totalscore
+        print "\n"
+        print_map(new_world)
+
 
 
     '''
