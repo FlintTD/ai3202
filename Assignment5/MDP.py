@@ -62,7 +62,11 @@ def ymax(val1, val2, val3, val4):
 def map_reward(map, state):
     if (0 <= state.y < 8) and (0 <= state.x < 10):
         # return the reward
-        return map[state.y][state.x][1]
+        state = map[state.y][state.x][1]
+        if state is None:
+            return 0
+        else:
+            return state
     else:
         return 0
 
@@ -70,23 +74,28 @@ def map_reward(map, state):
 def map_utility(map, state):
     if (0 <= state.y < 8) and (0 <= state.x < 10):
         # return the reward
-        return map[state.y][state.x][0]
+        state = map[state.y][state.x][1]
+        if state is None:
+            return 0
+        else:
+            return map[state.y][state.x][0]
     else:
         return 0
 
 
-
-def MDP(map, new_map, cur_state, start, step, discount, trail, score, winfail, iterkill):
+def MDP(map, new_map, cur_state, start, step, discount):
     state_value = map[start.y][start.x]
     if state_value is None:
         return None
 
-    # check reward
+        # check reward
     reward = map_reward(map, cur_state)
 
+        # avoid walls
     if reward is None:
         return 0
 
+        # check the neighboring directions
     d_down = cur_state.tweak(1, 0)
     d_right = cur_state.tweak(0, 1)
     d_up = cur_state.tweak(-1, 0)
@@ -103,71 +112,16 @@ def MDP(map, new_map, cur_state, start, step, discount, trail, score, winfail, i
     max_utility = reward + y_max_value
         # read into new map
     new_map[cur_state.y][cur_state.x][0] = (max_utility, reward, direction)
+        # find the change
+    delta_utility = abs(reward - max_utility)
 
-
-    pointer = None
-    down_trail = trail
-    right_trail = trail
-    up_trail = trail
-    left_trail = trail
-    if (0 <= cur_state.y < 8) and (0 <= cur_state.x < 10):
-        iterdead = iterkill + 1                         # check all possible actions
-        pointer = cur_state.tweak(-1, 0)
-        down = MDP(map, pointer, step + 1, goal, discount, down_trail.append(pointer), score, winfail, iterdead)
-        pointer = cur_state.tweak(0, 1)
-        right = MDP(map, pointer, step + 1, goal, discount, right_trail.append(pointer), score, winfail, iterdead)
-        pointer = cur_state.tweak(1, 0)
-        up = MDP(map, pointer, step + 1, goal, discount, up_trail.append(pointer), score, winfail, iterdead)
-        pointer = cur_state.tweak(0, -1)
-        left = MDP(map, pointer, step + 1, goal, discount, left_trail.append(pointer), score, winfail, iterdead)
-    else:                                               # avoid going off-map
-        return trail, score, 1
-
-
-
-
-    pointer = center.tweak(-1, 0)                       # add all valid nodes around the center
-    if (0 <= pointer.y < 8) and (0 <= pointer.x < 10):
-        tosearch.append(pointer)
-    pointer = center.tweak(-1, 1)
-    if (0 <= pointer.y < 8) and (0 <= pointer.x < 10):
-        tosearch.append(pointer)
-    pointer = center.tweak(0, 1)
-    if (0 <= pointer.y < 8) and (0 <= pointer.x < 10):
-        tosearch.append(pointer)
-    pointer = center.tweak(1, 1)
-    if (0 <= pointer.y < 8) and (0 <= pointer.x < 10):
-        tosearch.append(pointer)
-    pointer = center.tweak(1, 0)
-    if (0 <= pointer.y < 8) and (0 <= pointer.x < 10):
-        tosearch.append(pointer)
-    pointer = center.tweak(1, -1)
-    if (0 <= pointer.y < 8) and (0 <= pointer.x < 10):
-        tosearch.append(pointer)
-    pointer = center.tweak(0, -1)
-    if (0 <= pointer.y < 8) and (0 <= pointer.x < 10):
-        tosearch.append(pointer)
-    pointer = center.tweak(-1, -1)
-    if (0 <= pointer.y < 8) and (0 <= pointer.x < 10):
-        tosearch.append(pointer)
-
-    iterkill += 1
-    if location.is_same(goal):                          # if goal is reached, return
-        return trail, score, winfail
-    elif scrutiny is None:
-        return trail, score, winfail
-    elif iterkill > 40:                                 # emergency overflow shutdown
-        return trail, score, winfail
-    else:                                               # if goal is not reached, iterate
-        results = MDP(map, nex_state, goal, discount, trail, score, winfail, iterkill)
-        return results[0], results[1], results[2]
+    return delta_utility
 
 
 def main(argv):                                         # -------MAIN----------------------------
     w = sys.argv[1]
     e = sys.argv[2]
     world = []
-    new_world = []
     with open(w) as f:                                  # read in and clean up world data
         for line in f:
             world_in_list = line.strip("\n")
@@ -196,6 +150,8 @@ def main(argv):                                         # -------MAIN-----------
 
     hol = Node(7, 0)                                   # worldbuilding and execution
     start = Node(0, 9)
+    new_world = world
+    entropy = 0.9
     path = [hol]
     steps = 0
     start_state = hol
@@ -203,8 +159,20 @@ def main(argv):                                         # -------MAIN-----------
     sucess = 0
     leash = 1
 
-    while leash > 0.5:
-        MDP(world, new_world, hol, start, steps, e, path, totalscore, sucess, leash)
+        # iterate maps until utility change falls below threshold
+    while leash > e:
+        net = 0
+        for h in range(0, 8):
+            for g in range(9, 10, -1):
+                delta = MDP(world, new_world, Node(h, g), start, steps, entropy)
+                if delta > net:
+                    net = delta
+        leash = delta
+
+        # Move the Horse through the map
+    while safety is True:
+        if map_reward(map, hol) == 50:
+
 
     '''
     sum = 0
