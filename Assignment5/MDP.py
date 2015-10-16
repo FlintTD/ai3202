@@ -103,17 +103,20 @@ def map_utility(map, state):
         return 0
 
 
+def entro(state, origin, discount):
+    y_diff = abs(origin.y - state.y)
+    x_diff = abs(state.x - origin.x)
+    return (discount ^ (x_diff + y_diff))
+
+
 def MDP(map, new_map, cur_state, start, step, discount):
-    state_value = map[start.y][start.x]
-    if state_value is None:
-        return None
 
         # check reward
     reward = map_reward(map, cur_state)
 
         # avoid walls
     if reward is None:
-        return 0
+        return new_map, 0
 
         # check the neighboring directions
     d_down = cur_state.tweak(1, 0)
@@ -121,19 +124,19 @@ def MDP(map, new_map, cur_state, start, step, discount):
     d_up = cur_state.tweak(-1, 0)
     d_left = cur_state.tweak(0, -1)
         # find the utility of each direction, (probability * (future value + reward))
-    u_down = (0.8 * (map_utility(map, d_down) + map_reward(map, d_down))) + (0.1 * (map_utility(map, d_left) + map_reward(map, d_left))) + (0.1 * (map_utility(map, d_right) + map_reward(d_right)))
-    u_right = (0.8 * (map_utility(map, d_right) + map_reward(map, d_right))) + (0.1 * (map_utility(map, d_down.y) + map_reward(map, d_down))) + (0.1 * (map_utility(map, d_up) + map_reward(map, d_up)))
+    u_down = (0.8 * (map_utility(map, d_down) + map_reward(map, d_down))) + (0.1 * (map_utility(map, d_left) + map_reward(map, d_left))) + (0.1 * (map_utility(map, d_right) + map_reward(map, d_right)))
+    u_right = (0.8 * (map_utility(map, d_right) + map_reward(map, d_right))) + (0.1 * (map_utility(map, d_down) + map_reward(map, d_down))) + (0.1 * (map_utility(map, d_up) + map_reward(map, d_up)))
     u_up = (0.8 * (map_utility(map, d_up) + map_reward(map, d_up))) + (0.1 * (map_utility(map, d_right) + map_reward(map, d_right))) + (0.1 * (map_utility(map, d_left) + map_reward(map, d_left)))
     u_left = (0.8 * (map_utility(map, d_left) + map_reward(map, d_left))) + (0.1 * (map_utility(map, d_up) + map_reward(map, d_up))) + (0.1 * (map_utility(map, d_down) + map_reward(map, d_down)))
 
         # find the best direction
     y_max_value, direction = ymax(u_up, u_down, u_right, u_left)
         # find the state utility
-    max_utility = reward + y_max_value
-        # read into new map
-    new_map[cur_state.y][cur_state.x] = [max_utility, reward, direction]
+    max_utility = (reward + (y_max_value * discount))  # * entro(cur_state, start, discount)
         # find the change
     delta_utility = abs(map_utility(new_map, cur_state) - map_utility(map, cur_state))
+        # read into new map
+    new_map[cur_state.y][cur_state.x] = [max_utility, reward, direction]
 
     return new_map, delta_utility
 
@@ -178,62 +181,99 @@ def main(argv):                                         # -------MAIN-----------
                 world[y][x] = [0, 50, None]
 
     hol = Node(7, 0)                                   # worldbuilding and execution
-    start = Node(0, 9)
+    start = Node(7, 0)
     new_world = world
     old_world = world
     entropy = 0.9
     path = [hol]
     steps = 0
-    start_state = hol
     scorecard = []
     totalscore = 0
     success = False
-    leash = 1
+    leash = False
     safety = True
 
         # iterate maps until utility change falls below threshold
-    while leash > e:
+    while leash is False:
         net = 0
         for h in range(0, 8):
             for g in range(0, 10):
                 new_world, delta = MDP(old_world, new_world, Node(h, g), start, steps, entropy)
-                print "hi-sign"
                 if delta > net:
                     net = delta
-        leash = delta
+        if net < e:
+            leash = True
         old_world = new_world
+        print delta
 
         # Move the Horse through the map
-    leash = 40
+    leash = 50
     w = 0
     while safety is True:
         w += 1
+        hol.print_node()   # prints the path
         if map_reward(new_world, hol) is None:
             # wall contingent
             safety = False
         elif map_reward(new_world, hol) == 50:
             # win condition
+            scorecard.append(map_utility(new_world, hol))
             safety = False
             success = True
         elif map_direction(new_world, hol) is "left":
-            hol = hol.tweak(0, -1)
+            scorecard.append(map_utility(new_world, hol))
+            rand = random.random()
+            print rand
+            if rand > .2:
+                hol = hol.tweak(0, -1)
+            elif rand > .1:
+                hol = hol.tweak(-1, 0)
+            else:
+                hol = hol.tweak(1, 0)
             path.append(hol)
             steps += 1
         elif map_direction(new_world, hol) is "up":
-            hol = hol.tweak(-1, 0)
+            scorecard.append(map_utility(new_world, hol))
+            rand = random.random()
+            print rand
+            if rand > .2:
+                hol = hol.tweak(-1, 0)
+            elif rand > .1:
+                hol = hol.tweak(0, 1)
+            else:
+                hol = hol.tweak(0, -1)
             path.append(hol)
             steps += 1
         elif map_direction(new_world, hol) is "right":
-            hol = hol.tweak(0, 1)
+            scorecard.append(map_utility(new_world, hol))
+            rand = random.random()
+            print rand
+            if rand > .2:
+                hol = hol.tweak(0, 1)
+            elif rand > .1:
+                hol = hol.tweak(1, 0)
+            else:
+                hol = hol.tweak(-1, 0)
             path.append(hol)
             steps += 1
         elif map_direction(new_world, hol) is "down":
-            hol = hol.tweak(1, 0)
+            scorecard.append(map_utility(new_world, hol))
+            rand = random.random()
+            print rand
+            if rand > .2:
+                hol = hol.tweak(1, 0)
+            elif rand > .1:
+                hol = hol.tweak(0, -1)
+            else:
+                hol = hol.tweak(0, 1)
             path.append(hol)
             steps += 1
         elif map_direction(new_world, hol) == 0:
-            print "Something dumb happened."
-            safety = False
+                # stuck in wall or off map, reset to last valid location
+            print "Horse is dim"
+            path.pop()
+            hol = path[len(path) - 1]
+
         if w == leash:
             # prevent infinte loops
             safety = False
@@ -249,27 +289,15 @@ def main(argv):                                         # -------MAIN-----------
         print "Scorecard: %s" % scorecard
         print "Total Score: %s" % totalscore
         print "\n"
-        print_map(new_world)
+        # print_map(new_world)
     else:
         print "Path Success, horse has found apples!"
         print "%s steps taken." % steps
         print "Scorecard: %s" % scorecard
         print "Total Score: %s" % totalscore
         print "\n"
-        print_map(new_world)
+        # print_map(new_world)
 
-
-
-    '''
-    sum = 0
-    for r in range(0, len(result[1])-1):
-        sum += result[1][r]
-    print "Path followed:"
-    for yy in result[0]:
-        yy.print_node()
-    print "Total F-Score is: %s" % sum
-    print "Total number of unique node checks: %s" % result[2]
-    '''
 
 if __name__ == "__main__":
     main(sys.argv)
