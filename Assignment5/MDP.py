@@ -124,10 +124,10 @@ def MDP(map, new_map, cur_state, start, step, discount):
     d_up = cur_state.tweak(-1, 0)
     d_left = cur_state.tweak(0, -1)
         # find the utility of each direction, (probability * (future value + reward))
-    u_down = (0.8 * (map_utility(map, d_down) + map_reward(map, d_down))) + (0.1 * (map_utility(map, d_left) + map_reward(map, d_left))) + (0.1 * (map_utility(map, d_right) + map_reward(map, d_right)))
-    u_right = (0.8 * (map_utility(map, d_right) + map_reward(map, d_right))) + (0.1 * (map_utility(map, d_down) + map_reward(map, d_down))) + (0.1 * (map_utility(map, d_up) + map_reward(map, d_up)))
-    u_up = (0.8 * (map_utility(map, d_up) + map_reward(map, d_up))) + (0.1 * (map_utility(map, d_right) + map_reward(map, d_right))) + (0.1 * (map_utility(map, d_left) + map_reward(map, d_left)))
-    u_left = (0.8 * (map_utility(map, d_left) + map_reward(map, d_left))) + (0.1 * (map_utility(map, d_up) + map_reward(map, d_up))) + (0.1 * (map_utility(map, d_down) + map_reward(map, d_down)))
+    u_down = (0.8 * (map_utility(map, d_down))) + (0.1 * (map_utility(map, d_left))) + (0.1 * (map_utility(map, d_right)))
+    u_right = (0.8 * (map_utility(map, d_right))) + (0.1 * (map_utility(map, d_down))) + (0.1 * (map_utility(map, d_up)))
+    u_up = (0.8 * (map_utility(map, d_up))) + (0.1 * (map_utility(map, d_right))) + (0.1 * (map_utility(map, d_left)))
+    u_left = (0.8 * (map_utility(map, d_left))) + (0.1 * (map_utility(map, d_up))) + (0.1 * (map_utility(map, d_down)))
 
         # find the best direction
     y_max_value, direction = ymax(u_up, u_down, u_right, u_left)
@@ -138,7 +138,9 @@ def MDP(map, new_map, cur_state, start, step, discount):
         # find the change
     delta_utility = abs(map_utility(new_map, cur_state) - map_utility(map, cur_state))
 
+    '''
     print map_utility(map, cur_state)
+    '''
 
     return new_map, delta_utility
 
@@ -180,7 +182,7 @@ def main(argv):                                         # -------MAIN-----------
                 world[y][x] = [0, 1, None]
             if world[y][x] == '50':
                 # apples
-                world[y][x] = [0, 50, None]
+                world[y][x] = [50, 50, None]
 
     hol = Node(7, 0)                                   # worldbuilding and execution
     start = Node(7, 0)
@@ -206,7 +208,6 @@ def main(argv):                                         # -------MAIN-----------
         if net < e:
             leash = True
         old_world = new_world
-        print delta
 
         # Move the Horse through the map
     leash = 50
@@ -283,6 +284,8 @@ def main(argv):                                         # -------MAIN-----------
         # total the score
     for q in range(0, len(scorecard)):
         totalscore += scorecard[q]
+
+    print_map(old_world)
 
         # give a report printout
     if success is False:
